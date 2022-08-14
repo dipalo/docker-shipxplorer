@@ -1,14 +1,10 @@
 FROM ghcr.io/fredclausen/docker-baseimage:qemu
 
-ENV BEASTHOST=readsb \
-    BEASTPORT=30005 \
-    UAT_RECEIVER_PORT=30979 \
-    MLAT_SERVER=mlat1.rb24.com:40900 \
-    RBFEEDER_LOG_FILE="/var/log/rbfeeder.log" \
+ENV SXFEEDER_LOG_FILE="/var/log/sxfeeder.log" \
+    SXFEEDER_UDP_PORT=34995 \
     S6_BEHAVIOUR_IF_STAGE2_FAILS=2 \
     STATS_INTERVAL_MINUTES=5 \
-    VERBOSE_LOGGING=false \
-    ENABLE_MLAT=true
+    VERBOSE_LOGGING=true
 
 COPY rootfs/ /
 
@@ -25,13 +21,10 @@ RUN set -x && \
     # mlat-client dependencies
     TEMP_PACKAGES+=(build-essential) && \
     TEMP_PACKAGES+=(git) && \
-    KEPT_PACKAGES+=(python3-minimal) && \
-    KEPT_PACKAGES+=(python3-distutils) && \
-    TEMP_PACKAGES+=(libpython3-dev) && \
     # required to extract .deb file
     TEMP_PACKAGES+=(binutils) && \
     TEMP_PACKAGES+=(xz-utils) && \
-    # required to run rbfeeder
+    # required to run sxfeeder
     KEPT_PACKAGES+=(libc6:armhf) && \
     KEPT_PACKAGES+=(libcurl4:armhf) && \
     KEPT_PACKAGES+=(libglib2.0-0:armhf) && \
@@ -57,45 +50,31 @@ RUN set -x && \
     # add airnav repo
     echo 'deb [arch=armhf signed-by=/usr/share/keyrings/airnav.gpg] https://apt.rb24.com/ bullseye main' > /etc/apt/sources.list.d/airnav.list && \
     apt-get update && \
-    # get rbfeeder:
+    # get sxfeeder:
     # instead of apt-get install, we use apt-get download.
     # this is done because the package has systemd a dependency,
     # which we don't want in a container.
-    # instead, we download, extract and manually install rbfeeder,
+    # instead, we download, extract and manually install sxfeeder,
     # and install the dependencies manually.
-    mkdir -p /tmp/rbfeeder && \
-    pushd /tmp/rbfeeder && \
-    apt-get download rbfeeder:armhf && \
+    mkdir -p /tmp/sxfeeder && \
+    pushd /tmp/sxfeeder && \
+    apt-get download sxfeeder:armhf && \
     popd && \
     # extract .deb file
-    ar x --output=/tmp/rbfeeder -- /tmp/rbfeeder/*.deb && \
+    ar x --output=/tmp/sxfeeder -- /tmp/sxfeeder/*.deb && \
     # extract .tar.xz files
-    tar xvf /tmp/rbfeeder/data.tar.xz -C / && \
-    # get mlat-client:
-    BRANCH_MLAT_CLIENT=$(git -c 'versionsort.suffix=-' ls-remote --tags --sort='v:refname' 'https://github.com/mutability/mlat-client.git' | cut -d '/' -f 3 | grep '^v.*' | tail -1) && \
-    git clone \
-        --branch "$BRANCH_MLAT_CLIENT" \
-        --depth 1 --single-branch \
-        'https://github.com/mutability/mlat-client.git' \
-        /src/mlat-client \
-        && \
-    pushd /src/mlat-client && \
-    python3 /src/mlat-client/setup.py build && \
-    python3 /src/mlat-client/setup.py install && \
-    popd && \
+    tar xvf /tmp/sxfeeder/data.tar.xz -C / && \
     # clean up
     apt-get remove -y "${TEMP_PACKAGES[@]}" && \
     apt-get autoremove -y && \
     rm -rf /src/* /tmp/* /var/lib/apt/lists/* && \
-    # test mlat-client
-    mlat-client --help > /dev/null && \
-    # test rbfeeder & get version
-    if /usr/bin/rbfeeder --version > /dev/null 2>&1; \
-        then RBFEEDER_VERSION=$(/usr/bin/rbfeeder --no-start --version | cut -d " " -f 2,4 | tr -d ")" | tr " " "-"); \
-        else RBFEEDER_VERSION=$(qemu-arm-static /usr/bin/rbfeeder --no-start --version | cut -d " " -f 2,4 | tr -d ")" | tr " " "-"); \
+    # test sxfeeder & get version
+    if /usr/bin/sxfeeder --version > /dev/null 2>&1; \
+        then SXFEEDER_VERSION=$(/usr/bin/sxfeeder --no-start --version | cut -d " " -f 2,4 | tr -d ")" | tr " " "-"); \
+        else SXFEEDER_VERSION=$(qemu-arm-static /usr/bin/sxfeeder --no-start --version | cut -d " " -f 2,4 | tr -d ")" | tr " " "-"); \
         fi \
         && \
-    echo "$RBFEEDER_VERSION" > /CONTAINER_VERSION
+    echo "$SXFEEDER_VERSION" > /CONTAINER_VERSION
 
 # Expose ports
 EXPOSE 32088/tcp 30105/tcp

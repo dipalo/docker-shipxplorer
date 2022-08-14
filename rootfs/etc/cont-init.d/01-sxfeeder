@@ -1,0 +1,53 @@
+#!/usr/bin/with-contenv bash
+# shellcheck shell=bash
+
+# Check to make sure the correct command line arguments have been set
+EXITCODE=0
+if [ $EXITCODE -ne 0 ]; then
+  exit 1
+fi
+
+# Set up timezone
+if [ -z "${TZ}" ]; then
+  echo "WARNING: TZ environment variable not set"
+else
+  ln -snf "/usr/share/zoneinfo/$TZ" /etc/localtime && echo "$TZ" > /etc/timezone
+fi
+
+# Generate /etc/sxfeeder.ini based on environment variables
+echo """
+[client]
+disable_log=false
+log_file=$SXFEEDER_LOG_FILE
+""" > /etc/sxfeeder.ini
+
+if [ -z "${SHARING_KEY}" ]
+then
+  echo ""
+  echo "WARNING: SHARING_KEY environment variable was not set!"
+  echo "Please make sure you note down the key generated."
+  echo "Pass the key as environment var SHARING_KEY on next launch!"
+  echo ""
+else
+  echo "key=$SHARING_KEY" >> /etc/sxfeeder.ini
+fi
+
+{
+  echo """
+[network]
+  udp_listen_port=$SXFEEDER_UDP_PORT
+  """
+} >> /etc/sxfeeder.ini
+
+# Attempt to resolve BEASTHOST into an IP address
+if BEASTIP=$(s6-dnsip4 "$BEASTHOST" 2> /dev/null); then
+  echo "external_host=$BEASTIP" >> /etc/sxfeeder.ini
+else
+  echo "external_host=$BEASTHOST" >> /etc/sxfeeder.ini
+fi
+
+# Create log dirs
+mkdir -p /var/log/sxfeeder
+chown nobody:nogroup /var/log/sxfeeder
+touch $SXFEEDER_LOG_FILE
+truncate --size=0 $SXFEEDER_LOG_FILE

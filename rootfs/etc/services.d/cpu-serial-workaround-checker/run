@@ -4,7 +4,7 @@
 
 sleep 10
 
-if tail -20 /var/log/rbfeeder.log | grep "CPU Serial empty" > /dev/null 2>&1; then
+if tail -20 $SXFEEDER_LOG_FILE | grep "CPU Serial empty" > /dev/null 2>&1; then
     echo ""
     echo "************ ATTENTION! ************"
     echo ""
