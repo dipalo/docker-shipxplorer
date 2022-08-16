@@ -1,4 +1,4 @@
-FROM ghcr.io/fredclausen/docker-baseimage:qemu
+FROM ghcr.io/sdr-enthusiasts/docker-baseimage:qemu
 
 ENV SXFEEDER_LOG_FILE="/var/log/sxfeeder.log" \
     SXFEEDER_UDP_PORT=34995 \
@@ -77,7 +77,7 @@ RUN set -x && \
     echo "$SXFEEDER_VERSION" > /CONTAINER_VERSION
 
 # Expose ports
-EXPOSE 32088/tcp 30105/tcp
+EXPOSE $SXFEEDER_UDP_PORT/udp
 
 # Add healthcheck
 HEALTHCHECK --start-period=3600s --interval=600s  CMD /healthcheck.sh

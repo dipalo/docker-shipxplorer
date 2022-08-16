@@ -39,13 +39,6 @@ fi
   """
 } >> /etc/sxfeeder.ini
 
-# Attempt to resolve BEASTHOST into an IP address
-if BEASTIP=$(s6-dnsip4 "$BEASTHOST" 2> /dev/null); then
-  echo "external_host=$BEASTIP" >> /etc/sxfeeder.ini
-else
-  echo "external_host=$BEASTHOST" >> /etc/sxfeeder.ini
-fi
-
 # Create log dirs
 mkdir -p /var/log/sxfeeder
 chown nobody:nogroup /var/log/sxfeeder
